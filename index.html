@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>e-Kehadiran Guru</title>
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; text-align: center; }
+    .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    h2 { color: #0d6efd; margin-top: 0; }
+    .video-wrapper { position: relative; width: 100%; max-width: 500px; height: 360px; margin: 15px auto; background: #000; border-radius: 10px; overflow: hidden; }
+    video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    canvas { position: absolute; top: 0; left: 0; }
+    .status-box { margin-top: 15px; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 15px; background: #e9ecef; color: #333; }
+    .status-masuk { background: #d1e7dd; color: #0f5132; }
+    .status-pulang { background: #cff4fc; color: #055160; }
+    .status-warning { background: #fff3cd; color: #664d03; }
+    .status-error { background: #f8d7da; color: #842029; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>SISTEM KEHADIRAN GURU</h2>
+  <p>Sila lihat pada kamera untuk imbasan kehadiran</p>
+
+  <div class="video-wrapper" id="videoWrapper">
+    <video id="video" autoplay playsinline muted></video>
+  </div>
+
+  <div id="statusBox" class="status-box">⏳ Memulakan Kamera...</div>
+</div>
+
+<script>
+  // TAMPAL URL WEB APP APPS SCRIPT CIKGU DI SINI:
+  const API_URL = "https://script.google.com/macros/s/AKfycbzZztJ3DlU4yoIb1QNtJuU7ECM8L3h8vgPiwYPCiV1a1FPqEVtXbeTklxaiCQ7-i4Mq/exec";
+
+  const video = document.getElementById('video');
+  const statusBox = document.getElementById('statusBox');
+  
+  let labeledDescriptors = [];
+  let faceMatcher = null;
+  let isProcessing = false;
+
+  const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+
+  window.onload = () => {
+    initCamera();
+  };
+
+  async function initCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        video.play();
+        updateStatus("Kamera Aktif! Memuatkan Model AI...", "warning");
+        loadModels();
+      };
+    } catch (err) {
+      updateStatus("❌ Kamera disekat atau tidak ditemui. Pastikan peranti memberi kebenaran.", "error");
+    }
+  }
+
+  async function loadModels() {
+    try {
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+      
+      updateStatus("⏳ Memuatkan data guru...", "warning");
+      fetchTeacherData();
+    } catch (e) {
+      updateStatus("❌ Gagal memuatkan AI.", "error");
+    }
+  }
+
+  async function fetchTeacherData() {
+    try {
+      const res = await fetch(API_URL + "?action=getGuru");
+      const senaraiGuru = await res.json();
+
+      if (!senaraiGuru || senaraiGuru.length === 0) {
+        updateStatus("⚠️ Tiada data guru ditemui!", "warning");
+        return;
+      }
+
+      labeledDescriptors = [];
+      for (let guru of senaraiGuru) {
+        if (guru.urlGambar) {
+          try {
+            const img = await faceapi.fetchImage(guru.urlGambar);
+            const detections = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+            if (detections) {
+              labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(guru.id + "___" + guru.nama, [detections.descriptor]));
+            }
+          } catch (e) {}
+        }
+      }
+
+      if (labeledDescriptors.length > 0) {
+        faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
+        updateStatus("Sistem Sedia! Sila lihat pada kamera.", "normal");
+        startDetection();
+      } else {
+        updateStatus("⚠️ Gambar guru gagal diproses.", "error");
+      }
+    } catch (err) {
+      updateStatus("❌ Gagal disambungkan ke Google Sheet.", "error");
+    }
+  }
+
+  function startDetection() {
+    const wrapper = document.getElementById('videoWrapper');
+    const oldCanvas = wrapper.querySelector('canvas');
+    if (oldCanvas) oldCanvas.remove();
+
+    const canvas = faceapi.createCanvasFromMedia(video);
+    wrapper.append(canvas);
+
+    setInterval(async () => {
+      if (isProcessing || !faceMatcher || video.paused || video.ended) return;
+
+      const displaySize = { width: video.clientWidth, height: video.clientHeight };
+      faceapi.matchDimensions(canvas, displaySize);
+
+      const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })).withFaceLandmarks().withFaceDescriptors();
+      const resizedDetections = faceapi.resizeResults(detections, displaySize);
+      
+      canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+      faceapi.draw.drawDetections(canvas, resizedDetections);
+
+      if (resizedDetections.length > 0) {
+        const results = resizedDetections.map(d => faceMatcher.findBestMatch(d.descriptor));
+        results.forEach(async result => {
+          if (result.label !== 'unknown' && !isProcessing) {
+            isProcessing = true;
+            const parts = result.label.split('___');
+            const guruId = parts[0];
+            const guruNama = parts[1];
+
+            updateStatus("Muka Dikesan: " + guruNama + ". Merakam...", "warning");
+
+            try {
+              const resp = await fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify({ id: guruId, nama: guruNama })
+              });
+              const res = await resp.json();
+
+              if (res.type === "MASUK") updateStatus("☀️ " + res.msg, "masuk");
+              else if (res.type === "PULANG") updateStatus("🏢 " + res.msg, "pulang");
+              else if (res.status === "ALREADY") updateStatus(res.msg, "warning");
+              else updateStatus("❌ " + res.msg, "error");
+            } catch (e) {
+              updateStatus("❌ Gagal menyimpan rekod.", "error");
+            }
+
+            setTimeout(() => {
+              isProcessing = false;
+              updateStatus("Sistem Sedia! Sila lihat pada kamera.", "normal");
+            }, 4000);
+          }
+        });
+      }
+    }, 800);
+  }
+
+  function updateStatus(msg, type) {
+    statusBox.innerText = msg;
+    statusBox.className = "status-box";
+    if (type === "masuk") statusBox.classList.add("status-masuk");
+    else if (type === "pulang") statusBox.classList.add("status-pulang");
+    else if (type === "warning") statusBox.classList.add("status-warning");
+    else if (type === "error") statusBox.classList.add("status-error");
+  }
+</script>
+
+</body>
+</html>
