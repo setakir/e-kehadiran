@@ -33,8 +33,8 @@
 </div>
 
 <script>
-  // TAMPAL URL WEB APP APPS SCRIPT CIKGU DI SINI:
-  const API_URL = "https://script.google.com/macros/s/AKfycbzZztJ3DlU4yoIb1QNtJuU7ECM8L3h8vgPiwYPCiV1a1FPqEVtXbeTklxaiCQ7-i4Mq/exec";
+  // TAMPAL URL WEB APP APPS SCRIPT CIKGU DI DALAM PEMBUKA/PENUTUP KATAMERAH DI BAWAH:
+  const API_URL = "https://script.google.com/macros/s/AKfycbwao0yfSrJFywf7ijo7eq_-2LC9_8E7QfklaYAPa7wwIsN8YGb1aQFEqpoDQWZjWgpI/exec";
 
   const video = document.getElementById('video');
   const statusBox = document.getElementById('statusBox');
@@ -59,7 +59,7 @@
         loadModels();
       };
     } catch (err) {
-      updateStatus("❌ Kamera disekat atau tidak ditemui. Pastikan peranti memberi kebenaran.", "error");
+      updateStatus("❌ Kamera disekat atau tidak ditemui.", "error");
     }
   }
 
@@ -69,10 +69,10 @@
       await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
       await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
       
-      updateStatus("⏳ Memuatkan data guru...", "warning");
+      updateStatus("⏳ Memuatkan data guru dari Google Sheet...", "warning");
       fetchTeacherData();
     } catch (e) {
-      updateStatus("❌ Gagal memuatkan AI.", "error");
+      updateStatus("❌ Gagal memuatkan enjin AI.", "error");
     }
   }
 
@@ -82,7 +82,7 @@
       const senaraiGuru = await res.json();
 
       if (!senaraiGuru || senaraiGuru.length === 0) {
-        updateStatus("⚠️ Tiada data guru ditemui!", "warning");
+        updateStatus("⚠️ Tiada data guru ditemui dalam Sheet!", "warning");
         return;
       }
 
@@ -104,10 +104,10 @@
         updateStatus("Sistem Sedia! Sila lihat pada kamera.", "normal");
         startDetection();
       } else {
-        updateStatus("⚠️ Gambar guru gagal diproses.", "error");
+        updateStatus("⚠️ Gambar guru gagal diproses. Semak kebenaran akses gambar di Drive!", "error");
       }
     } catch (err) {
-      updateStatus("❌ Gagal disambungkan ke Google Sheet.", "error");
+      updateStatus("❌ Gagal disambungkan ke Google Sheet. Semak API_URL.", "error");
     }
   }
 
