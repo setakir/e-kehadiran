@@ -327,7 +327,7 @@
       labeledDescriptors = results.filter(r => r !== null);
 
       if (labeledDescriptors.length > 0) {
-        faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
+        faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.45);
         updateStatus("Sistem Sedia! Sila lihat pada kamera.", "normal");
         startDetection();
       } else {
