@@ -9,47 +9,66 @@
     body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
     h2 { color: #0d6efd; margin-top: 0; text-align: center; }
     
-    /* Layout Utama */
     .main-layout { display: flex; flex-wrap: wrap; gap: 15px; max-width: 1000px; margin: 0 auto; }
     .left-panel { flex: 2; min-width: 320px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
     .right-panel { flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 15px; }
     
-    /* Papan Kamera */
     .video-wrapper { position: relative; width: 100%; height: 320px; margin: 10px auto; background: #000; border-radius: 10px; overflow: hidden; }
     video { width: 100%; height: 100%; object-fit: cover; display: block; }
     canvas { position: absolute; top: 0; left: 0; }
     
-    /* Kotak Mesej Status */
     .status-box { margin-top: 15px; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 14px; background: #e9ecef; color: #333; line-height: 1.4; }
     .status-tepat { background: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
     .status-lewat { background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; font-size: 15px; }
     .status-pulang { background: #cff4fc; color: #055160; border: 1px solid #b6effb; }
     .status-warning { background: #fff3cd; color: #664d03; }
     
-    /* Kad Statistik & Peringatan */
     .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
     .card h3 { margin-top: 0; font-size: 16px; color: #333; border-bottom: 2px solid #f0f2f5; padding-bottom: 8px; }
     .stat-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 15px; }
     .stat-val { font-weight: bold; color: #0d6efd; }
     
-    /* Senarai Nama */
+    .btn-analisis { width: 100%; padding: 10px; background: #0d6efd; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; margin-top: 10px; }
+    .btn-analisis:hover { background: #0b5ed7; }
+    
     .alert-box { max-width: 1000px; margin: 15px auto 0; }
     .badge-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
     .badge { background: #e9ecef; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; color: #495057; }
     .badge-danger { background: #f8d7da; color: #842029; }
     .badge-warning { background: #fff3cd; color: #664d03; }
+
+    /* Modal / Pop-Up Styling */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow: auto; }
+    .modal-content { background: white; margin: 3% auto; padding: 20px; border-radius: 12px; max-width: 850px; position: relative; }
+    .close-btn { position: absolute; right: 20px; top: 15px; font-size: 24px; cursor: pointer; font-weight: bold; color: #aaa; }
+    
+    .nav-tabs { display: flex; gap: 10px; border-bottom: 2px solid #ddd; margin-bottom: 15px; }
+    .tab-btn { padding: 8px 16px; border: none; background: none; font-weight: bold; cursor: pointer; color: #555; }
+    .tab-btn.active { color: #0d6efd; border-bottom: 3px solid #0d6efd; }
+    
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+    table, th, td { border: 1px solid #ddd; }
+    th, td { padding: 8px; text-align: left; }
+    th { background: #f8f9fa; }
+    
+    .btn-print { background: #198754; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+
+    /* Cetak CSS */
+    @media print {
+      body * { visibility: hidden; }
+      #suratCetakArea, #suratCetakArea * { visibility: visible; }
+      #suratCetakArea { position: absolute; left: 0; top: 0; width: 100%; font-size: 14pt; }
+    }
   </style>
 </head>
 <body>
 
-<!-- Peringatan Atas: Belum Masuk (Muncul Selepas 7:45 AM) -->
 <div id="boxBelumMasuk" class="alert-box card" style="display: none; margin-bottom: 15px;">
   <h3 style="color: #842029;">⚠️ Senarai Guru Belum Daftar Masuk Hari Ini:</h3>
   <div id="listBelumMasuk" class="badge-list"></div>
 </div>
 
 <div class="main-layout">
-  <!-- Bahagian Utama (Kamera & Status) -->
   <div class="left-panel">
     <h2>SISTEM KEHADIRAN GURU</h2>
     <p style="margin-top: -10px; color: #666; font-size: 13px;">Sila lihat pada kamera untuk imbasan kehadiran</p>
@@ -61,7 +80,6 @@
     <div id="statusBox" class="status-box">⏳ Memulakan Kamera...</div>
   </div>
 
-  <!-- Bahagian Kanan (Statistik Ringkas) -->
   <div class="right-panel">
     <div class="card">
       <h3>📊 Ringkasan Kehadiran Hari Ini</h3>
@@ -77,14 +95,121 @@
         <span>Telah Daftar Pulang:</span>
         <span id="statPulang" class="stat-val" style="color: #0dcaf0;">0</span>
       </div>
+      <button class="btn-analisis" onclick="bukaModalAnalisis()">📊 Laporan & Analisis</button>
     </div>
   </div>
 </div>
 
-<!-- Peringatan Bawah: Tidak Daftar Pulang Semalam -->
 <div id="boxTidakPulang" class="alert-box card" style="display: none;">
   <h3 style="color: #664d03;">⚠️ Rekod Semalam: Guru Tidak Daftar Pulang:</h3>
   <div id="listTidakPulang" class="badge-list"></div>
+</div>
+
+<!-- MODAL POPUP ANALISIS -->
+<div id="analisisModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" onclick="tutupModalAnalisis()">&times;</span>
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="tukarTab('harian')">Analisis Harian</button>
+      <button class="tab-btn" onclick="tukarTab('bulanan')">Analisis Bulanan</button>
+      <button class="tab-btn" onclick="tukarTab('surat')">Surat Penjelasan Kelewatan</button>
+    </div>
+
+    <!-- TAB 1: HARIAN -->
+    <div id="tabHarian">
+      <label>Pilih Tarikh: </label>
+      <input type="date" id="inputTarikhHarian" onchange="loadAnalisisHarian()">
+      
+      <h4 style="color: #842029; margin-bottom: 5px;">🔴 Guru Hadir Lewat (Selepas 7:45 AM)</h4>
+      <table>
+        <thead>
+          <tr><th>Nama Guru</th><th>Masa Masuk</th><th>Lewat (Minit)</th><th>Masa Pulang</th></tr>
+        </thead>
+        <tbody id="tblLewat"><tr><td colspan="4">Pilih tarikh untuk paparan...</td></tr></tbody>
+      </table>
+
+      <h4 style="color: #0f5132; margin-bottom: 5px; margin-top: 20px;">🟢 Guru Hadir Tepat Waktu</h4>
+      <table>
+        <thead>
+          <tr><th>Nama Guru</th><th>Masa Masuk</th><th>Masa Pulang</th></tr>
+        </thead>
+        <tbody id="tblTepat"><tr><td colspan="3">Pilih tarikh untuk paparan...</td></tr></tbody>
+      </table>
+      <br>
+      <button class="btn-print" onclick="window.print()">🖨️ Cetak Analisis Harian</button>
+    </div>
+
+    <!-- TAB 2: BULANAN -->
+    <div id="tabBulanan" style="display: none;">
+      <label>Pilih Bulan: </label>
+      <input type="month" id="inputBulanBulanan" onchange="loadAnalisisBulanan()">
+      
+      <h4 style="margin-bottom: 5px;">📊 Ringkasan Kehadiran & Kelewatan Bulanan</h4>
+      <table>
+        <thead>
+          <tr><th>Nama Guru</th><th>Jumlah Hadir</th><th>Kekerapan Lewat</th></tr>
+        </thead>
+        <tbody id="tblBulanan"><tr><td colspan="3">Pilih bulan untuk paparan...</td></tr></tbody>
+      </table>
+      <br>
+      <button class="btn-print" onclick="window.print()">🖨️ Cetak Analisis Bulanan</button>
+    </div>
+
+    <!-- TAB 3: SURAT TUNJUK SEBAB -->
+    <div id="tabSurat" style="display: none;">
+      <h4 style="margin-bottom: 5px;">✉️ Senarai Guru Lewat & Cetak Surat Tunjuk Sebab</h4>
+      <table>
+        <thead>
+          <tr><th>Nama Guru</th><th>Kekerapan Lewat (Bulan Ini)</th><th>Tindakan</th></tr>
+        </thead>
+        <tbody id="tblSuratGuru"><tr><td colspan="3">Sila muat turun analisis bulanan dahulu...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- KAWASAN CETAK SURAT RASMI -->
+<div id="suratCetakArea" style="display: none; padding: 30px;">
+  <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px;">
+    <h3 style="margin: 0;">SEKOLAH KEBANGSAAN SETAKIR</h3>
+    <p style="margin: 2px 0;">SURAT PERINGATAN & REKOD KEHADIRAN LEWAT GURU</p>
+  </div>
+  <br>
+  <p><strong>Tarikh:</strong> <span id="sTarikhSurat"></span></p>
+  <p><strong>Kepada:</strong> <span id="sNamaGuru"></span></p>
+
+  <p>Tuan/Puan,</p>
+  <p><strong>MEMOHON PENJELASAN KEHADIRAN LEWAT KE SEKOLAH</strong></p>
+  <p>Merujuk kepada rekod e-Kehadiran sekolah, tuan/puan telah didapati hadir lewat ke sekolah pada ketetapan berikut:</p>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+    <thead>
+      <tr style="background: #eee;">
+        <th style="border: 1px solid #000; padding: 6px;">Tarikh Lewat</th>
+        <th style="border: 1px solid #000; padding: 6px;">Masa Rakam Masuk</th>
+        <th style="border: 1px solid #000; padding: 6px;">Minit Kelewatan</th>
+      </tr>
+    </thead>
+    <tbody id="sTblButiranLewat"></tbody>
+  </table>
+
+  <p>2. Sehubungan dengan itu, tuan/puan diminta untuk memberikan penjelasan bertulis mengenai kelewatan tersebut di ruangan bawah dan mengembalikan surat ini kepada Guru Besar/PK Administrasi dalam tempoh 3 hari bekerja.</p>
+  
+  <br>
+  <p>Sekian, terima kasih.</p>
+  <br><br>
+  <p>....................................................<br><strong>(GURU BESAR)</strong><br>SK Setakir</p>
+
+  <hr style="border-top: 1px dashed #000; margin: 30px 0;">
+
+  <p style="text-align: center;"><strong>PENJELASAN OLEH GURU</strong></p>
+  <p>Sebab Kelewatan: ..................................................................................................................................................</p>
+  <p>...................................................................................................................................................................................</p>
+  <br>
+  <div style="display: flex; justify-content: space-between;">
+    <div>Tandatangan Guru: ........................................</div>
+    <div>Tarikh: ........................................</div>
+  </div>
 </div>
 
 <script>
@@ -97,12 +222,32 @@
   let labeledDescriptors = [];
   let faceMatcher = null;
   let isProcessing = false;
+  let cachedBulananData = [];
 
   const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
 
   window.onload = () => {
     initCamera();
+    // Set tarikh default harian & bulanan
+    document.getElementById('inputTarikhHarian').value = new Date().toISOString().split('T')[0];
+    document.getElementById('inputBulanBulanan').value = new Date().toISOString().substring(0, 7);
   };
+
+  // BUNYI BEEP AUTOMATIK
+  function mainkanBeep() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 880; // Tone A5
+      gain.gain.value = 0.1;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      setTimeout(() => { osc.stop(); ctx.close(); }, 200);
+    } catch (e) {}
+  }
 
   async function initCamera() {
     try {
@@ -136,14 +281,12 @@
       const res = await fetch(API_URL + "?action=getDataLengkap");
       const data = await res.json();
 
-      // Update Statistik Kanan
       if (data.statistik) {
         document.getElementById('statTotal').innerText = data.statistik.jumlahGuru || 0;
         document.getElementById('statHadir').innerText = data.statistik.hadir || 0;
         document.getElementById('statPulang').innerText = data.statistik.pulang || 0;
       }
 
-      // Update Senarai Belum Masuk (Paparkan jika jam > 7:45 AM)
       const now = new Date();
       const currentMinit = (now.getHours() * 60) + now.getMinutes();
       if (currentMinit > (7 * 60 + 45) && data.belumMasuk && data.belumMasuk.length > 0) {
@@ -153,7 +296,6 @@
         document.getElementById('boxBelumMasuk').style.display = 'none';
       }
 
-      // Update Senarai Tidak Pulang Semalam (Bawah)
       if (data.tidakPulangSemalam && data.tidakPulangSemalam.length > 0) {
         document.getElementById('boxTidakPulang').style.display = 'block';
         document.getElementById('listTidakPulang').innerHTML = data.tidakPulangSemalam.map(n => `<span class="badge badge-warning">${n}</span>`).join('');
@@ -161,24 +303,28 @@
         document.getElementById('boxTidakPulang').style.display = 'none';
       }
 
-      // BINA DESCRIPTOR AI
       if (!data.senaraiGuru || data.senaraiGuru.length === 0) {
         updateStatus("⚠️ Tiada data guru ditemui!", "warning");
         return;
       }
 
+      // MEMATIKAN SEKURITI PROSES GAMBAR UNTUK KELAJUAN MAXIMAL
       labeledDescriptors = [];
-      for (let guru of data.senaraiGuru) {
+      const promises = data.senaraiGuru.map(async (guru) => {
         if (guru.urlGambar) {
           try {
             const img = await faceapi.fetchImage(guru.urlGambar);
             const detections = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
             if (detections) {
-              labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(guru.id + "___" + guru.nama, [detections.descriptor]));
+              return new faceapi.LabeledFaceDescriptors(guru.id + "___" + guru.nama, [detections.descriptor]);
             }
           } catch (e) {}
         }
-      }
+        return null;
+      });
+
+      const results = await Promise.all(promises);
+      labeledDescriptors = results.filter(r => r !== null);
 
       if (labeledDescriptors.length > 0) {
         faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
@@ -230,12 +376,14 @@
               });
               const res = await resp.json();
 
+              // MAIN BEEP
+              mainkanBeep();
+
               if (res.type === "MASUK_TEPAT") updateStatus("☀️ " + res.msg, "tepat");
               else if (res.type === "MASUK_LEWAT") updateStatus("⚠️ " + res.msg, "lewat");
               else if (res.type === "PULANG") updateStatus("🏢 " + res.msg, "pulang");
               else updateStatus(res.msg, "warning");
 
-              // Kemaskini statistik selepas imbasan berjaya
               fetchTeacherData();
             } catch (e) {
               updateStatus("❌ Gagal menyimpan rekod.", "error");
@@ -258,6 +406,112 @@
     else if (type === "lewat") statusBox.classList.add("status-lewat");
     else if (type === "pulang") statusBox.classList.add("status-pulang");
     else if (type === "warning") statusBox.classList.add("status-warning");
+  }
+
+  // LOGIK MODAL ANALISIS
+  function bukaModalAnalisis() {
+    document.getElementById('analisisModal').style.display = 'block';
+    loadAnalisisHarian();
+  }
+
+  function tutupModalAnalisis() {
+    document.getElementById('analisisModal').style.display = 'none';
+  }
+
+  function tukarTab(tabName) {
+    document.getElementById('tabHarian').style.display = tabName === 'harian' ? 'block' : 'none';
+    document.getElementById('tabBulanan').style.display = tabName === 'bulanan' ? 'block' : 'none';
+    document.getElementById('tabSurat').style.display = tabName === 'surat' ? 'block' : 'none';
+
+    const btns = document.querySelectorAll('.tab-btn');
+    btns.forEach(b => b.classList.remove('active'));
+    if(tabName === 'harian') btns[0].classList.add('active');
+    if(tabName === 'bulanan') btns[1].classList.add('active');
+    if(tabName === 'surat') btns[2].classList.add('active');
+
+    if(tabName === 'bulanan') loadAnalisisBulanan();
+  }
+
+  async function loadAnalisisHarian() {
+    const t = document.getElementById('inputTarikhHarian').value;
+    if(!t) return;
+    document.getElementById('tblLewat').innerHTML = '<tr><td colspan="4">Memuatkan data...</td></tr>';
+    document.getElementById('tblTepat').innerHTML = '<tr><td colspan="3">Memuatkan data...</td></tr>';
+
+    try {
+      const res = await fetch(API_URL + "?action=getAnalisisHarian&tarikh=" + t);
+      const data = await res.json();
+
+      if(data.lewat && data.lewat.length > 0) {
+        document.getElementById('tblLewat').innerHTML = data.lewat.map(g => 
+          `<tr><td>${g.nama}</td><td>${g.masuk}</td><td><strong style="color:red;">${g.minitLewat} Minit</strong></td><td>${g.pulang}</td></tr>`
+        ).join('');
+      } else {
+        document.getElementById('tblLewat').innerHTML = '<tr><td colspan="4">Tiada guru lewat pada tarikh ini.</td></tr>';
+      }
+
+      if(data.tepat && data.tepat.length > 0) {
+        document.getElementById('tblTepat').innerHTML = data.tepat.map(g => 
+          `<tr><td>${g.nama}</td><td>${g.masuk}</td><td>${g.pulang}</td></tr>`
+        ).join('');
+      } else {
+        document.getElementById('tblTepat').innerHTML = '<tr><td colspan="3">Tiada rekod hadir tepat.</td></tr>';
+      }
+    } catch(e) {}
+  }
+
+  async function loadAnalisisBulanan() {
+    const b = document.getElementById('inputBulanBulanan').value;
+    if(!b) return;
+    document.getElementById('tblBulanan').innerHTML = '<tr><td colspan="3">Memuatkan data...</td></tr>';
+
+    try {
+      const res = await fetch(API_URL + "?action=getAnalisisBulanan&bulan=" + b);
+      const data = await res.json();
+      cachedBulananData = data.rekapGuru || [];
+
+      if(cachedBulananData.length > 0) {
+        document.getElementById('tblBulanan').innerHTML = cachedBulananData.map(g => 
+          `<tr><td>${g.nama}</td><td>${g.totalMasuk} Hari</td><td><strong style="${g.totalLewat > 0 ? 'color:red;' : ''}">${g.totalLewat} Kali</strong></td></tr>`
+        ).join('');
+
+        // Populate Tab Surat
+        document.getElementById('tblSuratGuru').innerHTML = cachedBulananData.filter(g => g.totalLewat > 0).map(g => 
+          `<tr>
+            <td>${g.nama}</td>
+            <td><strong style="color:red;">${g.totalLewat} Kali Lewat</strong></td>
+            <td><button class="btn-print" onclick="cetakSurat('${g.id}')">✉️ Jana Surat Tunjuk Sebab</button></td>
+          </tr>`
+        ).join('');
+        
+        if(document.getElementById('tblSuratGuru').innerHTML === '') {
+          document.getElementById('tblSuratGuru').innerHTML = '<tr><td colspan="3">Tiada guru yang lewat untuk bulan ini.</td></tr>';
+        }
+      } else {
+        document.getElementById('tblBulanan').innerHTML = '<tr><td colspan="3">Tiada rekod bulan ini.</td></tr>';
+      }
+    } catch(e) {}
+  }
+
+  function cetakSurat(guruId) {
+    const guru = cachedBulananData.find(g => g.id === guruId);
+    if(!guru) return;
+
+    document.getElementById('sTarikhSurat').innerText = new Date().toLocaleDateString('ms-MY');
+    document.getElementById('sNamaGuru').innerText = guru.nama;
+
+    document.getElementById('sTblButiranLewat').innerHTML = guru.senaraiTarikhLewat.map(l => 
+      `<tr>
+        <td style="border: 1px solid #000; padding: 6px; text-align: center;">${l.tarikh}</td>
+        <td style="border: 1px solid #000; padding: 6px; text-align: center;">${l.masa}</td>
+        <td style="border: 1px solid #000; padding: 6px; text-align: center;">${l.minit} Minit</td>
+      </tr>`
+    ).join('');
+
+    // Buka kawasan cetak
+    document.getElementById('suratCetakArea').style.display = 'block';
+    window.print();
+    document.getElementById('suratCetakArea').style.display = 'none';
   }
 </script>
 
