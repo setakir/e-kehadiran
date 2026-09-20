@@ -3,38 +3,93 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>e-Kehadiran Guru</title>
+  <title>Sistem e-Kehadiran Guru</title>
   <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; text-align: center; }
-    .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-    h2 { color: #0d6efd; margin-top: 0; }
-    .video-wrapper { position: relative; width: 100%; max-width: 500px; height: 360px; margin: 15px auto; background: #000; border-radius: 10px; overflow: hidden; }
+    body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
+    h2 { color: #0d6efd; margin-top: 0; text-align: center; }
+    
+    /* Layout Utama */
+    .main-layout { display: flex; flex-wrap: wrap; gap: 15px; max-width: 1000px; margin: 0 auto; }
+    .left-panel { flex: 2; min-width: 320px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
+    .right-panel { flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 15px; }
+    
+    /* Papan Kamera */
+    .video-wrapper { position: relative; width: 100%; height: 320px; margin: 10px auto; background: #000; border-radius: 10px; overflow: hidden; }
     video { width: 100%; height: 100%; object-fit: cover; display: block; }
     canvas { position: absolute; top: 0; left: 0; }
-    .status-box { margin-top: 15px; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 15px; background: #e9ecef; color: #333; }
-    .status-masuk { background: #d1e7dd; color: #0f5132; }
-    .status-pulang { background: #cff4fc; color: #055160; }
+    
+    /* Kotak Mesej Status */
+    .status-box { margin-top: 15px; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 14px; background: #e9ecef; color: #333; line-height: 1.4; }
+    .status-tepat { background: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+    .status-lewat { background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; font-size: 15px; }
+    .status-pulang { background: #cff4fc; color: #055160; border: 1px solid #b6effb; }
     .status-warning { background: #fff3cd; color: #664d03; }
-    .status-error { background: #f8d7da; color: #842029; }
+    
+    /* Kad Statistik & Peringatan */
+    .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+    .card h3 { margin-top: 0; font-size: 16px; color: #333; border-bottom: 2px solid #f0f2f5; padding-bottom: 8px; }
+    .stat-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 15px; }
+    .stat-val { font-weight: bold; color: #0d6efd; }
+    
+    /* Senarai Nama */
+    .alert-box { max-width: 1000px; margin: 15px auto 0; }
+    .badge-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .badge { background: #e9ecef; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; color: #495057; }
+    .badge-danger { background: #f8d7da; color: #842029; }
+    .badge-warning { background: #fff3cd; color: #664d03; }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <h2>SISTEM KEHADIRAN GURU</h2>
-  <p>Sila lihat pada kamera untuk imbasan kehadiran</p>
+<!-- Peringatan Atas: Belum Masuk (Muncul Selepas 7:45 AM) -->
+<div id="boxBelumMasuk" class="alert-box card" style="display: none; margin-bottom: 15px;">
+  <h3 style="color: #842029;">⚠️ Senarai Guru Belum Daftar Masuk Hari Ini:</h3>
+  <div id="listBelumMasuk" class="badge-list"></div>
+</div>
 
-  <div class="video-wrapper" id="videoWrapper">
-    <video id="video" autoplay playsinline muted></video>
+<div class="main-layout">
+  <!-- Bahagian Utama (Kamera & Status) -->
+  <div class="left-panel">
+    <h2>SISTEM KEHADIRAN GURU</h2>
+    <p style="margin-top: -10px; color: #666; font-size: 13px;">Sila lihat pada kamera untuk imbasan kehadiran</p>
+
+    <div class="video-wrapper" id="videoWrapper">
+      <video id="video" autoplay playsinline muted></video>
+    </div>
+
+    <div id="statusBox" class="status-box">⏳ Memulakan Kamera...</div>
   </div>
 
-  <div id="statusBox" class="status-box">⏳ Memulakan Kamera...</div>
+  <!-- Bahagian Kanan (Statistik Ringkas) -->
+  <div class="right-panel">
+    <div class="card">
+      <h3>📊 Ringkasan Kehadiran Hari Ini</h3>
+      <div class="stat-row">
+        <span>Jumlah Guru:</span>
+        <span id="statTotal" class="stat-val">0</span>
+      </div>
+      <div class="stat-row">
+        <span>Telah Daftar Masuk:</span>
+        <span id="statHadir" class="stat-val" style="color: #198754;">0</span>
+      </div>
+      <div class="stat-row">
+        <span>Telah Daftar Pulang:</span>
+        <span id="statPulang" class="stat-val" style="color: #0dcaf0;">0</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Peringatan Bawah: Tidak Daftar Pulang Semalam -->
+<div id="boxTidakPulang" class="alert-box card" style="display: none;">
+  <h3 style="color: #664d03;">⚠️ Rekod Semalam: Guru Tidak Daftar Pulang:</h3>
+  <div id="listTidakPulang" class="badge-list"></div>
 </div>
 
 <script>
-  // TAMPAL URL WEB APP APPS SCRIPT CIKGU DI DALAM PEMBUKA/PENUTUP KATAMERAH DI BAWAH:
-  const API_URL = "https://script.google.com/macros/s/AKfycbwao0yfSrJFywf7ijo7eq_-2LC9_8E7QfklaYAPa7wwIsN8YGb1aQFEqpoDQWZjWgpI/exec";
+  // TAMPAL URL WEB APP APPS SCRIPT CIKGU DI SINI:
+  const API_URL = "PASTE_URL_WEB_APP_DI_SINI";
 
   const video = document.getElementById('video');
   const statusBox = document.getElementById('statusBox');
@@ -69,7 +124,7 @@
       await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
       await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
       
-      updateStatus("⏳ Memuatkan data guru dari Google Sheet...", "warning");
+      updateStatus("⏳ Memuatkan data lengkap dari Google Sheet...", "warning");
       fetchTeacherData();
     } catch (e) {
       updateStatus("❌ Gagal memuatkan enjin AI.", "error");
@@ -78,16 +133,42 @@
 
   async function fetchTeacherData() {
     try {
-      const res = await fetch(API_URL + "?action=getGuru");
-      const senaraiGuru = await res.json();
+      const res = await fetch(API_URL + "?action=getDataLengkap");
+      const data = await res.json();
 
-      if (!senaraiGuru || senaraiGuru.length === 0) {
-        updateStatus("⚠️ Tiada data guru ditemui dalam Sheet!", "warning");
+      // Update Statistik Kanan
+      if (data.statistik) {
+        document.getElementById('statTotal').innerText = data.statistik.jumlahGuru || 0;
+        document.getElementById('statHadir').innerText = data.statistik.hadir || 0;
+        document.getElementById('statPulang').innerText = data.statistik.pulang || 0;
+      }
+
+      // Update Senarai Belum Masuk (Paparkan jika jam > 7:45 AM)
+      const now = new Date();
+      const currentMinit = (now.getHours() * 60) + now.getMinutes();
+      if (currentMinit > (7 * 60 + 45) && data.belumMasuk && data.belumMasuk.length > 0) {
+        document.getElementById('boxBelumMasuk').style.display = 'block';
+        document.getElementById('listBelumMasuk').innerHTML = data.belumMasuk.map(n => `<span class="badge badge-danger">${n}</span>`).join('');
+      } else {
+        document.getElementById('boxBelumMasuk').style.display = 'none';
+      }
+
+      // Update Senarai Tidak Pulang Semalam (Bawah)
+      if (data.tidakPulangSemalam && data.tidakPulangSemalam.length > 0) {
+        document.getElementById('boxTidakPulang').style.display = 'block';
+        document.getElementById('listTidakPulang').innerHTML = data.tidakPulangSemalam.map(n => `<span class="badge badge-warning">${n}</span>`).join('');
+      } else {
+        document.getElementById('boxTidakPulang').style.display = 'none';
+      }
+
+      // BINA DESCRIPTOR AI
+      if (!data.senaraiGuru || data.senaraiGuru.length === 0) {
+        updateStatus("⚠️ Tiada data guru ditemui!", "warning");
         return;
       }
 
       labeledDescriptors = [];
-      for (let guru of senaraiGuru) {
+      for (let guru of data.senaraiGuru) {
         if (guru.urlGambar) {
           try {
             const img = await faceapi.fetchImage(guru.urlGambar);
@@ -104,10 +185,10 @@
         updateStatus("Sistem Sedia! Sila lihat pada kamera.", "normal");
         startDetection();
       } else {
-        updateStatus("⚠️ Gambar guru gagal diproses. Semak kebenaran akses gambar di Drive!", "error");
+        updateStatus("⚠️ Gambar guru gagal diproses.", "error");
       }
     } catch (err) {
-      updateStatus("❌ Gagal disambungkan ke Google Sheet. Semak API_URL.", "error");
+      updateStatus("❌ Gagal sambungan ke Google Sheet.", "error");
     }
   }
 
@@ -149,10 +230,13 @@
               });
               const res = await resp.json();
 
-              if (res.type === "MASUK") updateStatus("☀️ " + res.msg, "masuk");
+              if (res.type === "MASUK_TEPAT") updateStatus("☀️ " + res.msg, "tepat");
+              else if (res.type === "MASUK_LEWAT") updateStatus("⚠️ " + res.msg, "lewat");
               else if (res.type === "PULANG") updateStatus("🏢 " + res.msg, "pulang");
-              else if (res.status === "ALREADY") updateStatus(res.msg, "warning");
-              else updateStatus("❌ " + res.msg, "error");
+              else updateStatus(res.msg, "warning");
+
+              // Kemaskini statistik selepas imbasan berjaya
+              fetchTeacherData();
             } catch (e) {
               updateStatus("❌ Gagal menyimpan rekod.", "error");
             }
@@ -160,7 +244,7 @@
             setTimeout(() => {
               isProcessing = false;
               updateStatus("Sistem Sedia! Sila lihat pada kamera.", "normal");
-            }, 4000);
+            }, 5000);
           }
         });
       }
@@ -170,10 +254,10 @@
   function updateStatus(msg, type) {
     statusBox.innerText = msg;
     statusBox.className = "status-box";
-    if (type === "masuk") statusBox.classList.add("status-masuk");
+    if (type === "tepat") statusBox.classList.add("status-tepat");
+    else if (type === "lewat") statusBox.classList.add("status-lewat");
     else if (type === "pulang") statusBox.classList.add("status-pulang");
     else if (type === "warning") statusBox.classList.add("status-warning");
-    else if (type === "error") statusBox.classList.add("status-error");
   }
 </script>
 
